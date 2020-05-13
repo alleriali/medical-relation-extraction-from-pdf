@@ -13,16 +13,16 @@ class MergeRelation():
         print(df.dtypes)
         lemmatizer = WordNetLemmatizer()
         for i, row in df.iterrows():
-            df.at[i, 'source'] = " ".join(
+            source_name = " ".join(
                 [lemmatizer.lemmatize(token) for token in word_tokenize(row['source'].lower())])
-            df.at[i, 'target'] = " ".join(
+            target_name = " ".join(
                 [lemmatizer.lemmatize(token) for token in word_tokenize(row['target'].lower())])
-            print(type(row['sent']))
-            if type(row['sent'])==float:
-                print(row['sent'])
+            if source_name==target_name:
                 df.drop(index=i)
-                continue
-            df.at[i, 'sent'] = row['sent'].lower()
+            else:
+                df.at[i, 'source'] = source_name
+                df.at[i, 'target'] = target_name
+
         return df
 
 
@@ -30,6 +30,8 @@ class MergeRelation():
     def get_graph(self,kg_df):
         frames = [self.kg_df, kg_df]
         self.kg_df = pd.concat(frames,sort=False)
+
+
 
 
 

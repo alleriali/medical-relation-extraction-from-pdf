@@ -32,12 +32,12 @@ if __name__ == "__main__":
     parser.add_argument("--test_data", type=str, default='./data/SemEval2010_task8_all_data/SemEval2010_task8_testing_keys/treat_cause_p_test.txt', \
                         help="test data .txt file path")
     parser.add_argument("--use_pretrained_blanks", type=int, default=0, help="0: Don't use pre-trained blanks model, 1: use pre-trained blanks model")
-    parser.add_argument("--num_classes", type=int, default=4, help='number of relation classes')
+    parser.add_argument("--num_classes", type=int, default=8, help='number of relation classes')
     parser.add_argument("--batch_size", type=int, default=16, help="Training batch size")
     parser.add_argument("--gradient_acc_steps", type=int, default=1, help="No. of steps of gradient accumulation")
     parser.add_argument("--max_norm", type=float, default=1.0, help="Clipped gradient norm")
     parser.add_argument("--fp16", type=int, default=0, help="1: use mixed precision ; 0: use floating point 32") # mixed precision doesn't seem to train well
-    parser.add_argument("--num_epochs", type=int, default=35, help="No of epochs")
+    parser.add_argument("--num_epochs", type=int, default=50, help="No of epochs")
     parser.add_argument("--lr", type=float, default=0.00005, help="learning rate")
     parser.add_argument("--model_no", type=int, default=2, help='''Model ID: 0 - BERT\n
                                                                             1 - ALBERT''')
@@ -48,18 +48,15 @@ if __name__ == "__main__":
                                                                 \n0: Don\'t freeze \
                                                                 (Probably best not to freeze if GPU memory is sufficient)''')
     args = parser.parse_args()
+
     
     if args.train == 1:
         net = train_and_fit(args)
     print("aaaa")
     if args.infer == 1:
         inferer = infer_from_trained(args, detect_entities=True)
-        test = "The surprise [E1]visit[/E1] caused a [E2]frenzy[/E2] on the already chaotic trading floor."
-        #test = "Other <E1>items</E1> advertised on TV simply melt the chocolate on the <E2>stovetop</E2>."
-        pred = inferer.infer_sentence(test, detect_entities=False)
-        print("111")
-        print(pred)
-        test2 = "After eating the chicken, he developed a sore throat the next morning."
+
+        test2 = "exudry ® , omniderm ® , vigilon ® , duoderm ® , mepitel ® ) may aid in healing and reduce pain ."
         pred = inferer.infer_sentence(test2, detect_entities=True)
         print("222")
         print(pred)
@@ -83,39 +80,50 @@ if __name__ == "__main__":
         test6 ="GIANT CELL TUMOR OF THE TENDON SHEATH A giant cell tumor of the tendon sheath is the most common tumor of the hand and presents with a ﬁrm enlarging nodule on the ﬁngers ."
         pred = inferer.infer_sentence(test6, detect_entities=True)
         print(pred)
-        sents_for_pretraining =[]
+        test7 = "topical corticosteroids may improve the dermatitis, and chronic administration of oral acyclovir is appropriate for patients with eh "
+        pred = inferer.infer_sentence(test7, detect_entities=True)
+        print(pred)
+        # # sents_for_pretraining =[]
         merged = MergeRelation()
-        # for file in glob.glob('./data/PDF1/*'):
-        #     if file.find('.pdf') != -1:
-        #         print(file)
-        #         file_name = os.path.basename(file)
-        #         graph = Graph(file_name)
-        #         Pdf2txt = PdfToTxt(file)
-        #         input_sents = Pdf2txt.get_processed_sents()
-        #         sents_for_pretraining.extend(input_sents)
-        #         for sent in input_sents:
-        #             pred = inferer.infer_sentence(sent,detect_entities=True)
-        #             if pred is not None:
-        #                 graph.add_edge(pred)
-        #         csv_path = file.replace('.pdf', '.csv')
-        #         graph.kg_df.to_csv(csv_path, header=True)
-        #         merged.get_graph(graph.kg_df)
-        for file in glob.glob('./data/PDF1/*'):
-            if file.find('.csv')!=-1:
-                kg_df = pd.read_csv(file)
-                merged.get_graph(kg_df)
-        merged.kg_df = merged.process_df(merged.kg_df)
-        # with open('./data/sents_for_pretraining.txt','w+') as f:
-        #     for sent in sents_for_pretraining:
-        #         f.write(sent+'\n'+'\n')
-        merged.kg_df.to_csv('./data/PDF1/DF_full1.csv', index=False)
+        for file in glob.glob('./data/Test_PDF/*'):
+            if file.find('.pdf') != -1:
+                print(file)
+                csv_file = file.replace('.pdf', '.csv')
+                if os.path.exists(csv_file):
+                    df = pd.read_csv(csv_file)
+                    merged.get_graph(df)
+                else:
+                    file_name = os.path.basename(file)
+                    graph = Graph(file_name)
+                    Pdf2txt = PdfToTxt(file)
+                    input_sents = Pdf2txt.get_processed_sents()
+                # sents_for_pretraining.extend(input_sents)
+                    for sent in input_sents:
+                        sent = sent.lower()
+                        pred = inferer.infer_sentence(sent,detect_entities=True)
+                        if pred is not None:
+                            graph.add_edge(pred)
+                    graph.get_df()
+                    csv_path = file.replace('.pdf', '.csv')
+                    graph.kg_df.to_csv(csv_path)
+                    merged.get_graph(graph.kg_df)
+        # for file in glob.glob('./data/PDF_For_Train/*'):
+        #     if file.find('.csv')!=-1:
+        #         kg_df = pd.read_csv(file)
+        #         # merged.get_graph(kg_df)
+        # # #merged.kg_df = merged.process_df(merged.kg_df)
+        # # # # with open('./data/sents_for_pretraining.txt','w+') as f:
+        # # # #     for sent in sents_for_pretraining:
+        # # # #         f.write(sent+'\n'+'\n')
+        # # #merged.kg_df = merged.process_df(merged.kg_df)
+        # # # merged.kg_df.to_csv('./data/PDF_For_Train/DF_full_without_lemm.csv', index=False)
         merged.vote_relations()
-        # merged.get_final_graph()
-        # merged.show_graph()
-
-        merged.voted_by_pdfs.to_csv('./data/PDF1/DF_vote_by_pdf.csv',index=False)
-        merged.voted_by_sents.to_csv('./data/PDF1/DF_vote_by_sents.csv', index=False)
-        # GraphVisua = GraphVisualization(merged.G)
+        # # # # # # merged.get_final_graph()
+        # # # # # # merged.show_graph()
+        # # # # #
+        merged.voted_by_pdfs.to_csv('./data/Test_PDF/DF_vote_by_pdfs.csv',index=False)
+        merged.voted_by_sents.to_csv('./data/Test_PDF/DF_vote_by_sentences.csv', index=False)
+        # # GraphVisua = GraphVisualization(merged.G)
 
         # print('55555')
         # while True:

@@ -10,7 +10,7 @@ from pdfminer.pdfpage import PDFPage
 from io import StringIO
 class PdfToTxt:
     def __init__(self,pdf_path):
-        self.nlp = spacy.load('en_core_web_lg')
+        self.nlp = spacy.load('en_core_sci_md')
         txt_path = pdf_path.replace('.pdf','.txt')
         if os.path.exists(txt_path):
             with open (txt_path,'r') as f:
@@ -45,11 +45,17 @@ class PdfToTxt:
             sents_doc = self.nlp(sent)
         else:
             sents_doc = sent
-        sent_ = next(sents_doc.sents)
+        pairs = []
+        try:
+            sent_ = next(sents_doc.sents)
+        except StopIteration:
+            return pairs
+
+
         root = sent_.root
         #print('Root: ', root.text)
 
-        subject = None; objs = []; pairs = []
+        subject = None; objs = [];
         for child in root.children:
             #print(child.dep_)
             if child.dep_ in ["nsubj", "nsubjpass"]:
@@ -67,6 +73,7 @@ class PdfToTxt:
         return pairs
     def get_processed_sents(self):
         processed_sents  = []
+        self.text = re.sub('[●•]', '.', self.text)
         sents = sent_tokenize(self.text)
 
         for i,sent in enumerate(sents):
@@ -74,11 +81,14 @@ class PdfToTxt:
             if(len(tokens) > 4 and len(tokens)<50): # only take the sents with tokens between 4 and 99
 
                 sent = sent.replace('-\n','').replace('\n',' ').replace('ﬂ ','fl').replace('ﬁ ','fi') # modify typography
+                sent = re.sub('[—`*]', '', sent)
                 sent = re.sub('(\d{1,4}.){1,}\d{1,4}?',' ',sent)
                 match = re.search('\d+[a-z]', sent)
                 if match is not None:
                     sent = sent[:match.start()] + sent[match.end() - 1:]
                 sent = re.sub('\(\d+.*\)', ' ', sent)
+
+
                 sent = re.sub(r"\( {0,3}?\d{1,4} {0,3}?[,\-\–]? {0,3}?(\d{1,4})? {0,3}?\)", "", sent)  #remove citations like(12),(1,2)
                 sent = re.sub(r"\[ {0,3}?\d{1,4} {0,3}?[,\-\–]? {0,3}?(\d{1,4})? {0,3}?\]", "", sent)  #remove citations like[12],[1-4]
                 sent = sent.strip("\n")
@@ -88,6 +98,7 @@ class PdfToTxt:
                 sent = re.sub(r" +([\.\?,!])", r"\1", sent) # remove extra spaces in front of punc
                 sent = " ".join([token.replace('-', '') if token.find('[A-Z]') == -1 and token.find('-') != -1 else token for token in
                               word_tokenize(sent)])
+                sent = re.sub('—', '', sent)
                 if len(self.get_sub_obj_pairs(sent))>=1: # only take the sents with at least one pair of subject and object
                     processed_sents.append(sent)
         print(len(processed_sents))

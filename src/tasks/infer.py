@@ -87,11 +87,8 @@ class infer_from_trained(object):
         #     sent_ner = self.ner(sent)
         # else:
         #     sents_doc = sent
-
-        sent_ner = self.ner(sent)
         sent_doc = self.nlp(sent)
-
-
+        sent_ner = self.ner(sent)
         ent_text = set()
         diseases = set()
         chemicals = set()
@@ -123,18 +120,22 @@ class infer_from_trained(object):
         for ent in sent_ner.ents:
             ent_valid = True
             for token in ent:
-                if token.tag_=='VB':
+                if token.tag_=='VB' or token.tag_=='JJ':
                     ent_valid = False
                     break
             if not ent_valid:
                 continue
-            if ent.text not in ent_text:
-                if ent.label == 9255184837977538312:
-                    diseases.add(ent)
-                    self.diseases.add(ent.text)
-                else:
-                    chemicals.add(ent)
-                ent_text.add(ent.text)
+            for ent_in_doc in sent_doc.ents:
+                if ent_in_doc.text in ent.text or ent.text in ent_in_doc.text:
+
+                    if ent.text not in ent_text:
+                        ent_text.add(ent.text)
+                        if ent.label == 9255184837977538312:
+                            diseases.add(ent)
+                            self.diseases.add(ent.text)
+                        else:
+                            chemicals.add(ent)
+                        break
 
         print("dieseas:",diseases)
         print("chemicals:",chemicals)
@@ -147,15 +148,15 @@ class infer_from_trained(object):
             for d in diseases:
                 for c in chemicals:
                     if d.start<c.start:
-                        pairs.add((d,c))
+                        pairs.add((d,c,'[disease]','[chemical]'))
                     else:
-                        pairs.add((c,d))
-            if len(diseases)>=2:
-                for a,b in combinations([d for d in diseases],2):
-                    if a.start <b.start:
-                        pairs.add((a,b))
-                    else:
-                        pairs.add((b, a))
+                        pairs.add((c,d,'[chemical]','[disease]'))
+            # if len(diseases)>=2:
+            #     for a,b in combinations([d for d in diseases],2):
+            #         if a.start <b.start:
+            #             pairs.add((a,b))
+            #         else:
+            #             pairs.add((b, a))
         new_pairs = []
         for pair in pairs:
             if len(pair[0]) > 1:
@@ -166,7 +167,7 @@ class infer_from_trained(object):
                 p1 = [p for p in pair[1]]
             else:
                 p1 = pair[1]
-            new_pairs.append((p0, p1))
+            new_pairs.append((p0, p1,pair[2],pair[3]))
 
         print(new_pairs)
         return new_pairs
@@ -210,18 +211,23 @@ class infer_from_trained(object):
     def  annotate_sent(self, sent_nlp, e1, e2):
         annotated = ''
         e1start, e1end, e2start, e2end = 0, 0, 0, 0
+        e1start_idx, e2start_idx = 0,0
+
         for token in sent_nlp:
             if not isinstance(e1, list):
                 if (token.text == e1.text) and (e1start == 0) and (e1end == 0):
                     annotated += ' [E1]' + token.text + '[/E1] '
                     e1start, e1end = 1, 1
+                    e1start_idx = token.i
                     continue
             else:
                 if (token.text == e1[0].text) and (e1start == 0):
                     annotated += ' [E1]' + token.text + ' '
                     e1start += 1
+                    e1start_idx = token.i
                     continue
-                elif (token.text == e1[-1].text) and (e1end == 0):
+                elif (e1start == 1) and (token.text == e1[-1].text) and (token.i>e1start_idx) and (e1end == 0):
+                    print("token i:",token.i)
                     annotated += token.text + '[/E1] '
                     e1end += 1
                     continue
@@ -230,13 +236,15 @@ class infer_from_trained(object):
                 if (token.text == e2.text) and (e2start == 0) and (e2end == 0):
                     annotated += ' [E2]' + token.text + '[/E2] '
                     e2start, e2end = 1, 1
+                    e2start_idx = token.i
                     continue
             else:
                 if (token.text == e2[0].text) and (e2start == 0):
                     annotated += ' [E2]' + token.text + ' '
                     e2start += 1
+                    e2start_idx = token.i
                     continue
-                elif (token.text == e2[-1].text) and (e2end == 0):
+                elif (e2start == 1) and (token.text == e2[-1].text) and (token.i>e2start_idx) and (e2end == 0):
                     annotated += token.text + '[/E2] '
                     e2end += 1
                     continue
@@ -244,6 +252,7 @@ class infer_from_trained(object):
             
         annotated = annotated.strip()
         annotated = re.sub(' +', ' ', annotated)
+        print(annotated)
         return annotated
 
     def get_final_pairs(self,ents,pairs):
@@ -265,6 +274,19 @@ class infer_from_trained(object):
                     break
         return final_pairs
 
+    def get_annotated_sents_for_test(self,annotated_sent,type1,type2):
+        match1 = re.search('\[E1\]', annotated_sent)
+        start1 = match1.end()
+        match1 = re.search('\[/E1\]', annotated_sent)
+        end1 = match1.start()
+        match2 = re.search('\[E2\]', annotated_sent)
+        start2 = match2.end()
+        match2 = re.search('\[/E2\]', annotated_sent)
+        end2 = match2.start()
+        annotated_for_test = annotated_sent[:start1] + type1 + annotated_sent[end1:start2] + type2 + annotated_sent[end2:]
+        return annotated_for_test
+
+
     def get_annotated_sents(self, sent):
         sent_nlp = self.nlp(sent)
         # pairs1 = self.get_all_ent_pairs(sent)
@@ -279,11 +301,12 @@ class infer_from_trained(object):
             return
         annotated_list = []
         for pair in pairs:
-            print("type of e1",type(pair[0]))
-            print("type of e2", type(pair[1]))
+            # print("type of e1",type(pair[0]))
+            # print("type of e2", type(pair[1]))
 
             annotated = self.annotate_sent(sent_nlp, pair[0], pair[1])
-            annotated_list.append([annotated,pair[0], pair[1]])
+            annotated_for_test = self.get_annotated_sents_for_test(annotated,pair[2],pair[3])
+            annotated_list.append([annotated,pair[0], pair[1],annotated_for_test])
         return annotated_list
     
     def get_e1e2_start(self, x):
@@ -303,7 +326,7 @@ class infer_from_trained(object):
         tokenized = self.tokenizer.encode(sentence); #print(tokenized)
         e1_e2_start = self.get_e1e2_start(tokenized); #print(e1_e2_start)
         if e1_e2_start==(-1,-1):
-            return (None,None)
+            return None
         tokenized = torch.LongTensor(tokenized).unsqueeze(0)
         e1_e2_start = torch.LongTensor(e1_e2_start).unsqueeze(0)
         attention_mask = (tokenized != self.pad_id).float()
@@ -318,63 +341,57 @@ class infer_from_trained(object):
                                     e1_e2_start=e1_e2_start)
         tensor = torch.softmax(classification_logits, dim=1).max(1)[0]
 
-        if (tensor[0] < 0.5) :
-            return None,None
+        if (tensor[0] < 0.6) :
+            return None
         predicted = torch.softmax(classification_logits, dim=1).max(1)[1].item()
 
         print("Predicted: ", self.rm.idx2rel[predicted].strip(), '\n')
-        return (sentence, self.rm.idx2rel[predicted].strip())
+        return self.rm.idx2rel[predicted].strip()
     
     def infer_sentence(self, sentence, detect_entities=False):
         if detect_entities:
             preds = {}
             relations=[]
             #sentences = self.get_annotated_sents(sentence)
+            abrv_to_long = dict()
+            sent_doc = self.nlp(sentence)
+            for abrv in sent_doc._.abbreviations:
+                abrv_to_long[str(abrv)] = str(abrv._.long_form)
+                print("abrv_to_long:", abrv_to_long)
+
+
             sentences_with_paris = self.get_annotated_sents(sentence)
             if sentences_with_paris != None:
                 for sentence_with_pair in sentences_with_paris:
                     sent = sentence_with_pair[0]
-                    print("annotated_Sent",sent)
-                    sent_doc = self.nlp(sent)
-                    abrv_to_long = dict()
-                    for abrv in sent_doc._.abbreviations:
-                        abrv_to_long[str(abrv)] = str(abrv._.long_form)
-                    print("abrv_to_long:",abrv_to_long)
+                    #print("annotated_Sent",sent)
+                    sent_for_test = sentence_with_pair[3]
+                    #print("sent_for_test:",sent_for_test)
+
 
                     if not isinstance(sentence_with_pair[1], list):
                         e1 = sentence_with_pair[1].text
                     else:
                         e1 = " ".join([t.text for t in sentence_with_pair[1]])
-                    if e1 in abrv_to_long:
-                        print("this is a abbreviation:",e1)
-                        e1 = abrv_to_long[e1]
+
 
                     if not isinstance(sentence_with_pair[2], list):
                         e2 = sentence_with_pair[2].text
                     else:
                         e2 = " ".join([t.text for t in sentence_with_pair[2]])
-                    if e2 in abrv_to_long:
-                        print("this is a abbreviation:",e2)
-                        e2 = abrv_to_long[e2]
-                    (sentence, pred) = self.infer_one_sentence(sent)
-                    if (sentence, pred) == (None, None):
+
+                    pred = self.infer_one_sentence(sent)
+                    if pred is None:
                         continue
-                    # if os.path.exists('./data/PDFS/result1.txt'):
-                    #     with open('./data/PDFS/result1.txt','a+') as f:
-                    #         f.write(sentence + '\n')
-                    #         f.write(pred + '\n')
-                    # else:
-                    #     with open('./data/PDFS/result1.txt','w+') as f:
-                    #         f.write(sentence + '\n')
-                    #         f.write(pred + '\n')
-                    print("e1:",e1)
-                    print("e2:",e2)
-                    print("self_diseases:",self.diseases)
+
+                    # print("e1:",e1)
+                    # print("e2:",e2)
+                    # print("self_diseases:",self.diseases)
                     if pred.find('treated_by')!=-1:
-                        print("find treated_by label")
-                        if e1 in self.diseases and e2 in self.diseases:
-                            #print("both are diseases")
-                            continue
+                        #print("find treated_by label")
+                        # if e1 in self.diseases and e2 in self.diseases:
+                        #     #print("both are diseases")
+                        #     continue
                         if len(re.findall('\(e2,e1\)', pred)) != 0:
                             if e2 not in self.diseases and e1 in self.diseases:
                                 #print("find e1 is disease and e2 is not a disease")
@@ -383,9 +400,15 @@ class infer_from_trained(object):
                             if e1 not in self.diseases and e2 in self.diseases:
                                 #print("find e2 is disease and e1 is not a disease")
                                 pred = 'treated_by(e2,e1)'
-                    preds[sentence] = [pred]
-                    print("new_prediction:",pred)
-                    relations.append([pred,{'e1':e1,'e2':e2,'sent':sentence}])
+                    preds[sent] = [pred]
+                    if e1 in abrv_to_long:
+                        print("this is a abbreviation:",e1)
+                        e1 = e1+'('+abrv_to_long[e1]+')'
+                    if e2 in abrv_to_long:
+                        print("this is a abbreviation:",e2)
+                        e2 = e2+'('+abrv_to_long[e2]+')'
+                    #print("new_prediction:",pred)
+                    relations.append([pred,{'e1':e1,'e2':e2,'sent':sent}])
             # print(sentences)
             # if sentences != None:
             #     preds = {}

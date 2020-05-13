@@ -13,7 +13,6 @@ class Graph():
         self.targets = []
         self.edges = []
         self.sents=[]
-        self.kg_df = None
         self.pdf = pdf_name
 
     def add_edge(self, relations):
@@ -35,6 +34,7 @@ class Graph():
             self.targets.append(target)
             self.edges.append(realtion_name)
             self.sents.append(sent)
+    def get_df(self):
         self.kg_df = pd.DataFrame({'source': self.sources, 'target': self.targets, 'edge': self.edges,'sent':self.sents,'pdf':[self.pdf]*len(self.edges)})
 
 
