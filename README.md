@@ -15,6 +15,9 @@ states of DISEASE and CHEMICAL. The training of relation classifier is referred 
 
 main.py: fine tune BioBERT on NER and relation extraction tasks, the code for training is referred from https://github.com/dmis-lab/biobert.
 
+The pre-trainde NER : https://drive.google.com/drive/folders/1Uzt_kOGXOYNxXC1Cle-yeu0gDoXDbSyj?usp=sharing
+The pre-trained relation classifier : https://drive.google.com/drive/folders/1_PSrMT00YyOznCfNpvze6i_gZOErmMAW?usp=sharing
+
 
 
 
