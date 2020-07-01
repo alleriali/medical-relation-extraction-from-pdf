@@ -536,6 +536,30 @@ def get_annotated_sents_with_entities(sents):
     annotated_sents_with_entities =[]
     pred_results = RunNerOnSentence(sents)
     for pred in pred_results:
+        print("pred: ", pred)
         entities = GetEntities(pred['labels'], pred['toks'],pred['sentence'],nlp)
+        print("entities",entities)
         GetPossibleSentences(pred['toks'], entities, 'B-Disease', 'B-Chemical', annotated_sents_with_entities)
+    return annotated_sents_with_entities
+
+def infer_on_sentence(sent):
+    sents = []
+    sents.append(sent)
+    annotated_sents_with_entities = []
+    nlp = spacy.load("en_core_web_sm")
+    pred= RunNerOnSentence(sents)[0]
+    entities = GetEntities(pred['labels'], pred['toks'], pred['sentence'], nlp)
+    extracted_entities = {}
+    diseases =[]
+    chemicals =[]
+    GetPossibleSentences(pred['toks'], entities, 'B-Disease', 'B-Chemical', annotated_sents_with_entities)
+    if len(annotated_sents_with_entities)==0:
+        for (s,e) in entities['B-Disease']:
+            diseases.append(" ".join(pred['toks'][s:e+1]))
+        for (s,e) in entities['B-Chemical']:
+            chemicals.append(" ".join(pred['toks'][s:e+1]))
+        extracted_entities['disease'] = diseases
+        extracted_entities['chemical'] = chemicals
+        return [annotated_sents_with_entities,extracted_entities]
+
     return annotated_sents_with_entities

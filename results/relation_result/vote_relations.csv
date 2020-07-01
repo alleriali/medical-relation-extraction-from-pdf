@@ -1,0 +1,25 @@
+source,target,relation,counts
+AZT,bone marrow suppression,side_effect,1
+AZT,fatigue,side_effect,1
+retinoic acid,skin irritation,side_effect,1
+retinoic acid,erythema,side_effect,1
+petrolatum,dryness of the skin,treat,1
+penicillin,allergy,treat,1
+nits,lice,treat,1
+niacin,pellagra,treat,1
+isotretinoin,skin irritation,side_effect,1
+isotretinoin,erythema,side_effect,1
+isotretinoin,dryness of the skin,side_effect,1
+erythromycin,allergy,treat,1
+eosin,inflammation,side_effect,1
+chloramphenicol,allergy,treat,1
+calcium hydroxide,pellagra,treat,1
+alcohol,pain,treat,1
+Isotretinoin,dryness of the skin,treat,1
+Coelenterates,dermatitis,side_effect,1
+Burow ’ s solution,eczema,treat,1
+AZT,nausea,side_effect,1
+AZT,myopathy,side_effect,1
+AZT,insomnia,side_effect,1
+AZT,headaches,side_effect,1
+tetracycline,allergy,treat,1

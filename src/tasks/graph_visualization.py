@@ -10,12 +10,6 @@ class GraphVisualization():
     def __init__(self,graph):
         self.G = graph
         self.pos = nx.spring_layout(self.G)
-        plt.figure(figsize=(48, 48))
-        edge_labels = nx.get_edge_attributes(self.G, 'relation')
-        print(edge_labels)
-        nx.draw(self.G, pos=self.pos, with_labels=True, node_size=1000,node_color='skyblue', font_size=15, scale=2, k=4)
-        nx.draw_networkx_edge_labels(self.G, pos=self.pos, edge_labels=edge_labels, font_color='green')
-        plt.show()
 
     def node_adj_and_shown(self, node):
         nodes = set()

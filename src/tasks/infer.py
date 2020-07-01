@@ -226,21 +226,13 @@ class infer_from_trained(object):
     # string "[D]cancer[/D] can not be treated by [C]dienogest[C/]."
     def get_annotated_sents(self, sent):
         sent_nlp = self.nlp(sent)
-        # pairs1 = self.get_all_ent_pairs(sent)
-        #ents = self.get_all_ents(sent)
-        pairs = self.get_all_ent_pairs(sent)
 
-        #pairs2 = self.get_all_sub_obj_pairs(sent_nlp)
-        #print(pairs2)
-        #pairs = self.get_final_pairs(ents,pairs2)
+        pairs = self.get_all_ent_pairs(sent)
         if len(pairs) == 0:
             print('Found less than 2 entities!')
             return
         annotated_list = []
         for pair in pairs:
-            # print("type of e1",type(pair[0]))
-            # print("type of e2", type(pair[1]))
-
             annotated = self.annotate_sent(sent_nlp, pair[0], pair[1],pair[2],pair[3])
             print(annotated)
 
@@ -293,54 +285,55 @@ class infer_from_trained(object):
         return self.rm.idx2rel[predicted].strip()
     
     def infer_sentence(self, sentence, detect_entities=False):
-        if detect_entities:
-
-            relations=[]
-            #sentences = self.get_annotated_sents(sentence)
-            abrv_to_long = dict()
-            sent_doc = self.nlp(sentence)
-            for abrv in sent_doc._.abbreviations:
-                abrv_to_long[str(abrv)] = str(abrv._.long_form)
-                print("abrv_to_long:", abrv_to_long)
+        relations=[]
+        #sentences = self.get_annotated_sents(sentence)
+        abrv_to_long = dict()
+        sent_doc = self.nlp(sentence)
+        for abrv in sent_doc._.abbreviations:
+            abrv_to_long[str(abrv)] = str(abrv._.long_form)
+            print("abrv_to_long:", abrv_to_long)
 
 
-            sentences_with_paris = self.get_annotated_sents(sentence)
-            print('sentences_with_paris: ', sentences_with_paris)
+        sentences_with_paris = self.get_annotated_sents(sentence)
+        print('sentences_with_paris: ', sentences_with_paris)
 
-            if sentences_with_paris != None:
-                for sentence_with_pair in sentences_with_paris:
-                    sent = sentence_with_pair[0]
-                    sent = re.sub('\[D\].*\[/D\]','DISEASE',sent)
-                    sent_for_test = re.sub('\[C\].*\[/C\]','CHEMICAL',sent)
+        if sentences_with_paris != None:
+            for sentence_with_pair in sentences_with_paris:
+                pred ={}
+                sent = sentence_with_pair[0]
+                sent_for_test = re.sub('\[D\].*\[/D\]','DISEASE',sent)
+                sent_for_test = re.sub('\[C\].*\[/C\]','CHEMICAL',sent_for_test)
+                if sentence_with_pair[3]=='disease':
+                    disease = sentence_with_pair[1]
+                    chemical = sentence_with_pair[2]
+                else:
+                    disease = sentence_with_pair[2]
+                    chemical = sentence_with_pair[1]
 
 
-                    if not isinstance(sentence_with_pair[1], list):
-                        e1 = sentence_with_pair[1].text
-                    else:
-                        e1 = " ".join([t.text for t in sentence_with_pair[1]])
+                if not isinstance(sentence_with_pair[1], list):
+                    e1 = sentence_with_pair[1].text
+                else:
+                    e1 = " ".join([t.text for t in sentence_with_pair[1]])
 
 
-                    if not isinstance(sentence_with_pair[2], list):
-                        e2 = sentence_with_pair[2].text
-                    else:
-                        e2 = " ".join([t.text for t in sentence_with_pair[2]])
+                if not isinstance(sentence_with_pair[2], list):
+                    e2 = sentence_with_pair[2].text
+                else:
+                    e2 = " ".join([t.text for t in sentence_with_pair[2]])
 
-                    pred = self.infer_one_sentence(sent_for_test)
-                    if pred is None:
-                        continue
-                    if e1 in self.diseases:
-                        pred = pred+'(e2,e1)'
-                    else:
-                        pred = pred+'(e1,e2)'
+                relation = self.infer_one_sentence(sent_for_test)
 
-                    if e1 in abrv_to_long:
-                        print("this is a abbreviation:",e1)
-                        e1 = e1+'('+abrv_to_long[e1]+')'
-                    if e2 in abrv_to_long:
-                        print("this is a abbreviation:",e2)
-                        e2 = e2+'('+abrv_to_long[e2]+')'
+                pred['sent'] =sent
+                pred['disease'] = disease
+                pred['chemical'] = chemical
+                pred['relation'] = relation
+                if e1 in abrv_to_long:
+                    print("this is a abbreviation:",e1)
+                    e1 = e1+'('+abrv_to_long[e1]+')'
+                if e2 in abrv_to_long:
+                    print("this is a abbreviation:",e2)
+                    e2 = e2+'('+abrv_to_long[e2]+')'
 
-                    relations.append([pred,{'e1':e1,'e2':e2,'sent':sent}])
-                return relations
-        else:
-            return self.infer_one_sentence(sentence)
+                relations.append(pred)
+            return relations
