@@ -1,0 +1,5 @@
+,Carson_Paediatric_Dermatology_2nd.pdf,Duhring_Diseases_of_the_skin.pdf,Kane_Paediatric_Dermatology.pdf
+with_pypdf2,232,0,388
+with_pdfminer,461,1405,798
+with_tika,462,1517,698
+with_pymuPDF,466,1483,697

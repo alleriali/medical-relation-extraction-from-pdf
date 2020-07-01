@@ -11,39 +11,27 @@ class Graph():
     def __init__(self,pdf_name):
         self.sources = []
         self.targets = []
-        self.edges = []
+        self.relations = []
         self.sents=[]
         self.pdf = pdf_name
 
-    def add_edge(self, relations):
+    def add_edges(self,sents_with_relations:list):
+        for sent_with_relation in sents_with_relations:
+            self.sents.append(sent_with_relation['sent'])
+            self.sources.append(sent_with_relation['chemical'])
+            self.targets.append(sent_with_relation['disease'])
+            self.relations.append(sent_with_relation['relation'])
 
-        for relation in relations:
-            tag = relation[0]
-            index = re.search('\(', tag).start()
-            realtion_name = tag[:index]
-
-            if len(re.findall('\(e2,e1\)',tag)) != 0:
-                source = relation[1]['e2']
-                target = relation[1]['e1']
-            else:
-                source = relation[1]['e1']
-                target = relation[1]['e2']
-            sent = relation[1]['sent']
-
-            self.sources.append(source)
-            self.targets.append(target)
-            self.edges.append(realtion_name)
-            self.sents.append(sent)
     def get_df(self):
-        self.kg_df = pd.DataFrame({'source': self.sources, 'target': self.targets, 'edge': self.edges,'sent':self.sents,'pdf':[self.pdf]*len(self.edges)})
+        self.kg_df = pd.DataFrame({'source': self.sources, 'target': self.targets, 'relation': self.relations,'sent':self.sents,'pdf':[self.pdf]*len(self.sents)})
 
 
     def show_graph(self):
         self.G = nx.from_pandas_edgelist(self.kg_df, "source", "target",
-                                    "edge", create_using=nx.DiGraph())
+                                    "relation", create_using=nx.DiGraph())
         self.pos = nx.spring_layout(self.G)
         plt.figure(figsize=(48, 48))
-        edge_labels = nx.get_edge_attributes(self.G,'edge')
+        edge_labels = nx.get_edge_attributes(self.G,'relation')
         nx.draw(self.G,pos=self.pos, with_labels=True, node_color='skyblue',font_size=15,scale=2, k=4)
         nx.draw_networkx_edge_labels(self.G,pos = self.pos,edge_labels=edge_labels,font_color ='green')
         plt.show()
@@ -71,7 +59,7 @@ class Graph():
         print(nodes)
         if len(nodes)>=2:
             subgraph = self.G.subgraph(nodes)
-            edge_labels = nx.get_edge_attributes(subgraph, 'edge')
+            edge_labels = nx.get_edge_attributes(subgraph, 'relation')
             plt.figure()
             nx.draw_networkx(subgraph, pos=self.pos,with_labels=True)
             nx.draw_networkx_edge_labels(subgraph, pos=self.pos,edge_labels=edge_labels)
@@ -79,12 +67,12 @@ class Graph():
 
 
     def show_gragh_by_edge(self,relation_name):
-        graph = nx.from_pandas_edgelist(self.kg_df[self.kg_df['edge'] == relation_name], "source", "target",
-                                    "edge", create_using=nx.DiGraph())
+        graph = nx.from_pandas_edgelist(self.kg_df[self.kg_df['relation'] == relation_name], "source", "target",
+                                    "relation", create_using=nx.DiGraph())
 
         plt.figure(figsize=(24, 24))
         pos = nx.spring_layout(graph, k=2)  # k regulates the distance between nodes
-        edge_labels = nx.get_edge_attributes(graph, 'edge')
+        edge_labels = nx.get_edge_attributes(graph, 'relation')
         nx.draw(graph, with_labels=True, node_color='skyblue', node_size=1500, edge_cmap=plt.cm.Blues, pos=self.pos)
         nx.draw_networkx_edge_labels(graph, pos=self.pos, edge_labels=edge_labels, font_color='green')
         plt.show()

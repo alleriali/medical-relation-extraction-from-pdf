@@ -11,9 +11,11 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
-from ..misc import save_as_pickle, load_pickle
+from src.tasks.misc import save_as_pickle, load_pickle
 from tqdm import tqdm
 import logging
+import tensorflow as tf
+import csv
 
 tqdm.pandas(desc="prog_bar")
 logging.basicConfig(format='%(asctime)s [%(levelname)s]: %(message)s', \
@@ -21,12 +23,12 @@ logging.basicConfig(format='%(asctime)s [%(levelname)s]: %(message)s', \
 logger = logging.getLogger('__file__')
 
 def process_text(text, mode='train'):
-    sents, relations, comments, blanks = [], [], [], []
-    for i in range(int(len(text)/4)):
-        sent = text[4*i]
-        relation = text[4*i + 1]
-        comment = text[4*i + 2]
-        blank = text[4*i + 3]
+    sents, relations,  blanks = [], [], []
+    for i in range(len(text)):
+        sent = text[i]
+        # relation = text[3*i + 1]
+        # #comment = text[4*i + 2]
+        # blank = text[3*i + 2]
         
         # check entries
         if mode == 'train':
@@ -36,18 +38,19 @@ def process_text(text, mode='train'):
             if int(re.match("^\d+", sent)[0]) != (i + 1):
                 print(i, int(re.match("^\d+", sent)[0]))
             assert (int(re.match("^\d+", sent)[0]) - 8000) == (i + 1)
-        assert re.match("^Comment", comment)
-        assert len(blank) == 1
-        try:
-            sent = re.findall("\"(.+)\"", sent)[0]
-        except:
-            print(sent)
-        sent = re.sub('<e1>', '[E1]', sent)
-        sent = re.sub('</e1>', '[/E1]', sent)
-        sent = re.sub('<e2>', '[E2]', sent)
-        sent = re.sub('</e2>', '[/E2]', sent)
-        sents.append(sent); relations.append(relation), comments.append(comment); blanks.append(blank)
-    return sents, relations, comments, blanks
+        #assert re.match("^Comment", comment)
+        # assert len(blank) == 1
+        # try:
+        #     sent = re.findall("\"(.+)\"", sent)[0]
+        # except:
+        #     print(sent)
+        # sent = re.sub('<e1>', '[E1]', sent)
+        # sent = re.sub('</e1>', '[/E1]', sent)
+        # sent = re.sub('<e2>', '[E2]', sent)
+        # sent = re.sub('</e2>', '[/E2]', sent)
+        # sents.append(sent); relations.append(relation); blanks.append(blank)
+        #comments.append(comment)
+    return sents, relations,  blanks
 
 def preprocess_semeval2010_8(args):
     '''
@@ -58,7 +61,7 @@ def preprocess_semeval2010_8(args):
     with open(data_path, 'r', encoding='utf8') as f:
         text = f.readlines()
     
-    sents, relations, comments, blanks = process_text(text, 'train')
+    sents, relations,  blanks = process_text(text, 'train')
     df_train = pd.DataFrame(data={'sents': sents, 'relations': relations})
     
     data_path = args.test_data #'./data/SemEval2010_task8_all_data/SemEval2010_task8_testing_keys/TEST_FILE_FULL.TXT'
@@ -66,7 +69,7 @@ def preprocess_semeval2010_8(args):
     with open(data_path, 'r', encoding='utf8') as f:
         text = f.readlines()
     
-    sents, relations, comments, blanks = process_text(text, 'test')
+    sents, relations, blanks = process_text(text, 'test')
     df_test = pd.DataFrame(data={'sents': sents, 'relations': relations})
     
     rm = Relations_Mapper(df_train['relations'])
@@ -77,6 +80,64 @@ def preprocess_semeval2010_8(args):
     save_as_pickle('df_test.pkl', df_test)
     logger.info("Finished and saved!")
     
+    return df_train, df_test, rm
+
+
+def process_text_2(text, mode='train'):
+    sents, relations = [], []
+    if mode=="train":
+        for line in text:
+            sent = line[0]
+            relation = line[1]
+            sents.append(sent)
+            relations.append(relation)
+    if mode=="test":
+        for i in range(1,len(text)):
+            sent = text[i][1]
+            relation = text[i][2]
+            sents.append(sent)
+            relations.append(relation)
+    return sents, relations
+
+def preprocess_my_data(args):
+    '''
+    Data preprocessing for SemEval2010 task 8 dataset
+    '''
+    data_path = args.train_data  # './data/SemEval2010_task8_all_data/SemEval2010_task8_training/TRAIN_FILE.TXT'
+    logger.info("Reading training file %s..." % data_path)
+
+    def _read_tsv(input_file, quotechar=None):
+        """Reads a tab separated value file."""
+        with tf.gfile.Open(input_file, "r") as f:
+            reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
+            lines = []
+            for line in reader:
+                lines.append(line)
+            return lines
+
+    # with open(data_path, 'r', encoding='utf8') as f:
+    #     text = f.readlines()
+    text = _read_tsv(data_path)
+    sents, relations = process_text_2(text, 'train')
+    df_train = pd.DataFrame(data={'sents': sents, 'relations': relations})
+
+    data_path = args.test_data  # './data/SemEval2010_task8_all_data/SemEval2010_task8_testing_keys/TEST_FILE_FULL.TXT'
+    logger.info("Reading test file %s..." % data_path)
+    # with open(data_path, 'r', encoding='utf8') as f:
+    #     text = f.readlines()
+    text = _read_tsv(data_path)
+
+    sents, relations = process_text_2(text, 'test')
+    df_test = pd.DataFrame(data={'sents': sents, 'relations': relations})
+
+    rm = Relations_Mapper(df_train['relations'])
+    save_as_pickle('relations.pkl', rm)
+    df_test['relations_id'] = df_test.progress_apply(lambda x: rm.rel2idx[x['relations']], axis=1)
+    df_train['relations_id'] = df_train.progress_apply(lambda x: rm.rel2idx[x['relations']], axis=1)
+    save_as_pickle('df_train.pkl', df_train)
+    save_as_pickle('df_test.pkl', df_test)
+    logger.info("Finished and saved!")
+
     return df_train, df_test, rm
 
 class Relations_Mapper(object):
@@ -138,6 +199,31 @@ class semeval_dataset(Dataset):
         
         self.df['e1_e2_start'] = self.df.progress_apply(lambda x: get_e1e2_start(x['input'],\
                                                        e1_id=self.e1_id, e2_id=self.e2_id), axis=1)
+
+class relation_dataset(Dataset):
+    def __init__(self, df, tokenizer, D_id, C_id):
+        print("D_id:",D_id)
+        print("C_id:",C_id)
+        self.D_id = D_id
+        self.C_id = C_id
+        self.df = df
+        logger.info("Tokenizing data...")
+        self.df['input'] = self.df.progress_apply(lambda x: tokenizer.encode(x['sents']), \
+                                                  axis=1)
+        print()
+        def get_e1e2_start(sent, x, D_id, C_id):
+            print("sent",sent)
+            d_start = [i for i, e in enumerate(x) if e == self.D_id][0]
+            c_start = [i for i, e in enumerate(x) if e == self.C_id][0]
+
+            if d_start < c_start:
+                e1_e2_start = (d_start , c_start)
+            else:
+                e1_e2_start = (c_start , d_start)
+            return e1_e2_start
+
+        self.df['e1_e2_start'] = self.df.progress_apply(lambda x: get_e1e2_start(x['sents'],x['input'], \
+                                                                 D_id=self.D_id,C_id=self.C_id), axis=1)
     
     def __len__(self,):
         return len(self.df)
@@ -169,8 +255,8 @@ def load_dataloaders(args):
         logger.info("Loaded tokenizer from pre-trained blanks model")
     else:
         logger.info("Pre-trained blanks tokenizer not found, initializing new tokenizer...")
-        tokenizer = Tokenizer.from_pretrained(model, do_lower_case=lower_case)
-        tokenizer.add_tokens(['[E1]', '[/E1]', '[E2]', '[/E2]', '[BLANK]', '[disease]','[chemical]'])
+        tokenizer = Tokenizer.from_pretrained(model, do_lower_case=False)
+        tokenizer.add_tokens(['[E1]', '[/E1]', '[E2]', '[/E2]', '[BLANK]', 'DISEASE', 'CHEMICAL'])
 
         save_as_pickle("%s_tokenizer.pkl" % model_name, tokenizer)
         logger.info("Saved %s tokenizer at ./data/%s_tokenizer.pkl" %(model_name, model_name))
@@ -184,12 +270,16 @@ def load_dataloaders(args):
         df_test = load_pickle('df_test.pkl')
         logger.info("Loaded preproccessed data.")
     else:
-        df_train, df_test, rm = preprocess_semeval2010_8(args)
+        # df_train, df_test, rm = preprocess_semeval2010_8(args)
+        df_train, df_test, rm = preprocess_my_data(args)
     
-    e1_id = tokenizer.convert_tokens_to_ids('[E1]')
-    e2_id = tokenizer.convert_tokens_to_ids('[E2]')
-    train_set = semeval_dataset(df_train, tokenizer=tokenizer, e1_id=e1_id, e2_id=e2_id)
-    test_set = semeval_dataset(df_test, tokenizer=tokenizer, e1_id=e1_id, e2_id=e2_id)
+    # e1_id = tokenizer.convert_tokens_to_ids('[E1]')
+    # e2_id = tokenizer.convert_tokens_to_ids('[E2]')
+    D_id = tokenizer.convert_tokens_to_ids('DISEASE')
+    C_id = tokenizer.convert_tokens_to_ids('CHEMICAL')
+    # train_set = semeval_dataset(df_train, tokenizer=tokenizer, e1_id=e1_id, e2_id=e2_id)
+    train_set = relation_dataset(df_train, tokenizer=tokenizer, D_id=D_id, C_id=C_id)
+    test_set = relation_dataset(df_test, tokenizer=tokenizer, D_id=D_id, C_id=C_id)
     train_length = len(train_set); test_length = len(test_set)
     PS = Pad_Sequence(seq_pad_value=tokenizer.pad_token_id,\
                       label_pad_value=tokenizer.pad_token_id,\

@@ -460,7 +460,8 @@ class AlbertModel(AlbertPreTrainedModel):
             #self.lm_bias = nn.Parameter(torch.zeros(config.vocab_size))
         elif self.task == 'classification':
             self.n_classes_ = n_classes_
-            self.classification_layer = nn.Linear(1536, n_classes_)
+            #self.classification_layer = nn.Linear(1536, n_classes_)
+            self.classification_layer = nn.Linear(768, n_classes_)
 
     def get_input_embeddings(self):
         return self.embeddings.word_embeddings

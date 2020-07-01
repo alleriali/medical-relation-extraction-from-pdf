@@ -6,10 +6,8 @@ Created on Thu Nov 28 09:37:26 2019
 @author: weetee
 """
 import os
-import math
 import torch
-import torch.nn as nn
-from ..misc import save_as_pickle, load_pickle
+from src.tasks.misc import load_pickle
 from seqeval.metrics import precision_score, recall_score, f1_score
 import logging
 from tqdm import tqdm
@@ -60,6 +58,8 @@ def load_results(model_no=0):
 
 def evaluate_(output, labels, ignore_idx):
     ### ignore index 0 (padding) when calculating accuracy
+    print('labels: ', labels)
+    print('ignore_idx: ', ignore_idx)
     idxs = (labels != ignore_idx).squeeze()
     o_labels = torch.softmax(output, dim=1).max(1)[1]
     l = labels.squeeze()[idxs]; o = o_labels[idxs]

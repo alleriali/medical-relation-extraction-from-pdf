@@ -725,6 +725,8 @@ class BiobertModel(BiobertPreTrainedModel):
             v1v2 = torch.cat((v1v2[0], v1v2[1]))
             buffer.append(v1v2)
         del blankv1v2
+
+
         v1v2 = torch.stack([a for a in buffer], dim=0)
         del buffer
 

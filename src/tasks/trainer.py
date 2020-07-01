@@ -12,7 +12,7 @@ import torch.optim as optim
 from torch.nn.utils import clip_grad_norm_
 from .preprocessing_funcs import load_dataloaders
 from .train_funcs import load_state, load_results, evaluate_, evaluate_results
-from ..misc import save_as_pickle, load_pickle
+from src.tasks.misc import save_as_pickle, load_pickle
 import matplotlib.pyplot as plt
 import time
 import logging
@@ -113,6 +113,7 @@ def train_and_fit(args):
         start_time = time.time()
         net.train(); total_loss = 0.0; losses_per_batch = []; total_acc = 0.0; accuracy_per_batch = []
         for i, data in enumerate(train_loader, 0):
+            print('train_loader_i: ', i)
             x, e1_e2_start, labels, _,_,_ = data
             attention_mask = (x != pad_id).float()
             token_type_ids = torch.zeros((x.shape[0], x.shape[1])).long()
