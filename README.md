@@ -4,11 +4,8 @@ After download, run the file main.py, you'll extract medical relations from the 
 
 Then you could search for the relations by giving a relation type or entity names, a graph containing the output relations will be shown on.
 
-Except for the searching for relations stored in the knowledge graph, you can also try infer function: by giving a sentence, you can get the 
-entities and corresponding relations between the entities.
-
-Except main.py, you can also run scispacy_with_entity_position_in_model.py to get the same functions introduced above.
-
+Except for the searching for relations stored in the knowledge graph, you can input "infer", then input a sentence, you would get the 
+entities and corresponding predicted relations between the entities.
 
 scispacy_with_entity_position_in_model : scispacy NER + relation classifier based on the relation representation is the concatanation of the final hidden 
 states of DISEASE and CHEMICAL. The training of relation classifier is referred from https://github.com/plkmo/BERT-Relation-Extraction.
