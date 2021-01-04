@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Dec  2 17:40:16 2019
-
-@author: weetee
-"""
 
 from src.tasks.preprocessing_funcs import load_dataloaders
 from src.tasks.trainer import train_and_fit
