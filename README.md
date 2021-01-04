@@ -7,13 +7,7 @@ Then you could search for the relations by giving a relation type or entity name
 Except for the searching for relations stored in the knowledge graph, you can input "infer", then input a sentence, you would get the 
 entities and corresponding predicted relations between the entities.
 
-scispacy_with_entity_position_in_model : scispacy NER + relation classifier based on the relation representation is the concatanation of the final hidden 
-states of DISEASE and CHEMICAL. The training of relation classifier is referred from https://github.com/plkmo/BERT-Relation-Extraction.
-
-main.py: fine tune BioBERT on NER and relation extraction tasks, the code for training is referred from https://github.com/dmis-lab/biobert.
-
-The pre-trainde NER : https://drive.google.com/drive/folders/1Uzt_kOGXOYNxXC1Cle-yeu0gDoXDbSyj?usp=sharing
-The pre-trained relation classifier : https://drive.google.com/drive/folders/1_PSrMT00YyOznCfNpvze6i_gZOErmMAW?usp=sharing
+fine-tuning BioBERT on NER and relation extraction tasks referred from https://github.com/dmis-lab/biobert.
 
 
 
